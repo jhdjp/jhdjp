@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>小浪底水情</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:#f0f6f4;color:#2d3436;min-height:100vh;padding:16px;display:flex;justify-content:center}
+
+/* 主容器 */
+.wrap{max-width:480px;width:100%}
+
+/* 标题区 */
+.header{text-align:center;margin-bottom:20px;padding:24px 20px 20px;background:linear-gradient(135deg,#4fc3f7 0%,#26c6da 50%,#66bb6a 100%);border-radius:16px;box-shadow:0 6px 20px rgba(38,198,218,.25);position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;top:-50%;right:-20%;width:200px;height:200px;background:rgba(255,255,255,.08);border-radius:50%}
+.header::after{content:'';position:absolute;bottom:-30%;left:-10%;width:150px;height:150px;background:rgba(255,255,255,.06);border-radius:50%}
+.header h1{font-size:1.5rem;font-weight:700;color:#fff;letter-spacing:1px;position:relative;z-index:1}
+.header .sub{font-size:.8rem;color:rgba(255,255,255,.8);margin-top:6px;position:relative;z-index:1}
+
+/* 卡片 */
+.card{background:#fff;border-radius:14px;padding:18px 20px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.04);border:1px solid #f0f0f0}
+.card-title{display:flex;align-items:center;gap:8px;font-size:1.05rem;font-weight:600;color:#00838f;margin-bottom:12px;padding-bottom:10px;border-bottom:2px solid #e0f7fa}
+.card-title .icon{font-size:1.2rem}
+
+/* 今日水情数据项 */
+.data-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed #f0f0f0}
+.data-row:last-child{border-bottom:none}
+.data-label{font-size:.9rem;color:#78909c}
+.data-value{font-size:1rem;font-weight:600;color:#2d3436}
+.data-value .up{color:#e74c3c}
+.data-value .down{color:#00bcd4}
+.data-value .tag{display:inline-block;font-size:.75rem;padding:2px 8px;border-radius:10px;margin-left:6px}
+.tag-red{background:#ffebee;color:#c62828}
+.tag-green{background:#e8f5e9;color:#2e7d32}
+.tag-blue{background:#e3f2fd;color:#1565c0}
+
+/* 趋势列表 */
+.trend-item{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:.9rem;border-bottom:1px dashed #f5f5f5}
+.trend-item:last-child{border-bottom:none}
+.trend-date{color:#90a4ae;min-width:52px;font-variant-numeric:tabular-nums}
+.trend-level{font-weight:600;color:#37474f;min-width:80px;font-variant-numeric:tabular-nums}
+.trend-change{font-size:.85rem;font-variant-numeric:tabular-nums}
+.trend-today{background:#e0f7fa;border-radius:6px;padding:2px 6px;font-size:.7rem;color:#00838f;font-weight:600}
+
+/* 鱼情/提醒 */
+.info-text{font-size:.95rem;line-height:1.7;color:#546e7a}
+.highlight{color:#00838f;font-weight:600}
+.warn{color:#f57c00;font-weight:600}
+.danger{color:#c62828;font-weight:600}
+
+/* 鱼情评级 */
+.fish-rating{display:inline-block;padding:4px 12px;border-radius:20px;font-size:.85rem;font-weight:600;margin-top:6px}
+.fish-good{background:#e8f5e9;color:#2e7d32}
+.fish-ok{background:#fff8e1;color:#f57f17}
+.fish-bad{background:#ffebee;color:#c62828}
+.fish-ban{background:#ffebee;color:#c62828}
+
+/* 底部 */
+.footer{text-align:center;padding:16px 0;font-size:.75rem;color:#b0bec5}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+function param(k){return new URLSearchParams(location.search).get(k)}
+function esc(s){return s?s.replace(/</g,'&lt;').replace(/>/g,'&gt;'):''}
+
+// 解析水情内容
+function parseContent(msg){
+  if(!msg) return [];
+  var lines=msg.split('\n').filter(function(l){return l.trim()!==''});
+  var sections=[];
+  var current=null;
+
+  for(var i=0;i<lines.length;i++){
+    var line=lines[i].trim();
+    // 识别section标题
+    if(line.startsWith('🎣')&&!line.startsWith('🎣🎣')||line.startsWith('📊')||line.startsWith('🐟')||line.startsWith('📈')){
+      if(current) sections.push(current);
+      // 提取emoji后面的标题
+      var m=line.match(/^([🎣📊🐟📈]+)\s*(.*)$/);
+      if(m){
+        current={icon:m[1],title:m[2]||'垂钓提醒',items:[],raw:line};
+        // 如果标题行后面紧跟内容（同一行）
+        if(m[2]&&m[2].length>4){
+          current.items.push(m[2]);
+        }
+      }else{
+        current={icon:'',title:line,items:[]};
+      }
+    }else if(line.startsWith('🎣🎣')){
+      // 特殊提醒
+      if(current) sections.push(current);
+      current={icon:'🎣',title:'特别提醒',items:[line.replace(/🎣+/g,'').trim()],raw:line};
+    }else if(current){
+      current.items.push(line);
+    }else{
+      // 没有section头的行
+      current={icon:'',title:'',items:[line]};
+    }
+  }
+  if(current) sections.push(current);
+  return sections;
+}
+
+// 渲染今日水情数据
+function renderWaterData(items){
+  var html='';
+  for(var i=0;i<items.length;i++){
+    var line=items[i];
+    if(line.indexOf('库水位')>=0){
+      var lv=line.match(/([\d.]+)m/);
+      var chg=line.match(/[↑↓]([\d.]+)m/);
+      html+='<div class="data-row"><span class="data-label">库水位</span><span class="data-value">'+(lv?lv[1]+'m':'-')+(chg?' ｜ <span class="'+(line.indexOf('↑')>=0?'up':'down')+'">'+(line.indexOf('↑')>=0?'↑':'↓')+chg[1]+'m</span>':'')+'</span></div>';
+    }else if(line.indexOf('入库')>=0){
+      var m=line.match(/入库[：:]\s*(\d+).*出库[：:]\s*(\d+)/);
+      if(m){
+        html+='<div class="data-row"><span class="data-label">入库 / 出库</span><span class="data-value">'+m[1]+' / '+m[2]+' m³/s</span></div>';
+      }else{
+        html+='<div class="data-row"><span class="data-label">流量</span><span class="data-value">'+esc(line)+'</span></div>';
+      }
+    }else if(line.indexOf('蓄水量')>=0){
+      var st=line.match(/([\d.]+)亿/);
+      html+='<div class="data-row"><span class="data-label">蓄水量</span><span class="data-value">'+(st?st[1]+'亿m³':'-')+'</span></div>';
+    }else if(line.indexOf('坝下')>=0){
+      var ds=line.match(/([\d.]+)m/);
+      html+='<div class="data-row"><span class="data-label">坝下水位</span><span class="data-value">'+(ds?ds[1]+'m':'-')+'</span></div>';
+    }else{
+      html+='<div class="data-row"><span class="data-label">'+esc(line)+'</span><span class="data-value"></span></div>';
+    }
+  }
+  return html;
+}
+
+// 渲染7日趋势
+function renderTrend(items){
+  var html='';
+  for(var i=0;i<items.length;i++){
+    var line=items[i].trim();
+    var m=line.match(/(\d{2}-\d{2})\s+([\d.]+)m/);
+    if(m){
+      var date=m[1],level=m[2];
+      var chg=line.match(/[↑↓]([\d.]+)/);
+      var isToday=line.indexOf('←今日')>=0||line.indexOf('今日')>=0;
+      var changeHtml='';
+      if(chg){
+        var isUp=line.indexOf('↑')>=0;
+        changeHtml='<span class="trend-change" style="color:'+(isUp?'#66bb6a':'#ef5350')+'">'+(isUp?'↑':'↓')+chg[1]+'</span>';
+      }else if(line.indexOf('—')>=0){
+        changeHtml='<span class="trend-change" style="color:#bdbdbd">—</span>';
+      }
+      html+='<div class="trend-item"><span class="trend-date">'+date+'</span><span class="trend-level">'+level+'m</span>'+changeHtml+(isToday?'<span class="trend-today">今日</span>':'')+'</div>';
+    }
+  }
+  return html;
+}
+
+// 渲染鱼情
+function renderFish(items){
+  var html='';
+  var text=items.join(' ');
+  // 识别鱼情等级
+  var rating='';
+  if(text.indexOf('禁钓')>=0||text.indexOf('危险')>=0){rating='<span class="fish-rating fish-ban">禁钓</span>';}
+  else if(text.indexOf('好钓')>=0){rating='<span class="fish-rating fish-good">好钓</span>';}
+  else if(text.indexOf('难钓')>=0){rating='<span class="fish-rating fish-bad">难钓</span>';}
+  else if(text.indexOf('可钓')>=0){rating='<span class="fish-rating fish-ok">可钓</span>';}
+  else{rating='<span class="fish-rating fish-ok">一般</span>';}
+
+  html+='<div class="info-text">'+esc(text)+'</div>'+rating;
+  return html;
+}
+
+// 渲染垂钓提醒
+function renderFishingAlert(items){
+  var text=items.join(' ');
+  var html='<div class="info-text">'+esc(text)+'</div>';
+  return html;
+}
+
+// 渲染特别提醒
+function renderSpecial(items){
+  var text=items.join(' ');
+  return '<div class="info-text highlight">'+esc(text)+'</div>';
+}
+
+function render(){
+  var title=param('title')||'小浪底水情简报';
+  var msg=param('message')||param('content')||'';
+  var date=param('date')||'';
+
+  // 从标题提取日期
+  var dateMatch=title.match(/(\d+)月(\d+)日/);
+  var dateStr=dateMatch?dateMatch[1]+'月'+dateMatch[2]+'日':'';
+
+  var sections=parseContent(msg);
+  var html='';
+
+  // 标题
+  html+='<div class="header">';
+  html+='<h1>🌊 小浪底水情简报</h1>';
+  if(dateStr) html+='<div class="sub">'+dateStr+' · 小浪底水库</div>';
+  html+='</div>';
+
+  // 各section
+  for(var i=0;i<sections.length;i++){
+    var s=sections[i];
+    var titleText=s.title;
+    var icon=s.icon;
+
+    // 根据内容类型渲染不同卡片
+    if(titleText.indexOf('今日水情')>=0||titleText.indexOf('水情')>=0 && s.items.some(function(x){return x.indexOf('库水位')>=0})){
+      html+='<div class="card"><div class="card-title"><span class="icon">📊</span>今日水情</div>';
+      html+=renderWaterData(s.items);
+      html+='</div>';
+    }else if(titleText.indexOf('7')>=0||titleText.indexOf('趋势')>=0||titleText.indexOf('近')>=0 && s.items.length>3){
+      html+='<div class="card"><div class="card-title"><span class="icon">📈</span>近7日水位</div>';
+      html+=renderTrend(s.items);
+      html+='</div>';
+    }else if(titleText.indexOf('鱼情')>=0){
+      html+='<div class="card"><div class="card-title"><span class="icon">🐟</span>鱼情分析</div>';
+      html+=renderFish(s.items);
+      html+='</div>';
+    }else if(titleText.indexOf('垂钓')>=0||titleText.indexOf('提醒')>=0 && icon==='🎣' && !s.raw||titleText.indexOf('垂钓')>=0){
+      html+='<div class="card"><div class="card-title"><span class="icon">🎣</span>垂钓提醒</div>';
+      html+=renderFishingAlert(s.items);
+      html+='</div>';
+    }else if(titleText.indexOf('特别')>=0||s.raw&&s.raw.indexOf('🎣🎣')>=0){
+      html+='<div class="card"><div class="card-title"><span class="icon">⚠️</span>特别提醒</div>';
+      html+=renderSpecial(s.items);
+      html+='</div>';
+    }else{
+      // 默认渲染
+      var cardTitle=titleText||'通知';
+      html+='<div class="card"><div class="card-title"><span class="icon">'+(icon||'📢')+'</span>'+esc(cardTitle)+'</div>';
+      html+='<div class="info-text">'+esc(s.items.join('\n'))+'</div>';
+      html+='</div>';
+    }
+  }
+
+  // 底部
+  if(date) html+='<div class="footer">数据更新：'+esc(date)+'</div>';
+  html+='<div class="footer">小浪底水利枢纽 · 水情自动监测</div>';
+
+  document.getElementById('app').innerHTML=html;
+}
+
+render();
+</script>
+</body>
+</html>
