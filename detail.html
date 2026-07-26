@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#26c6da">
+<meta name="format-detection" content="telephone=no">
+<title>小浪底水情</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --bg:#f0f6f4; --card:#fff;
+  --primary:#00838f; --primary-dark:#006064; --primary-light:#e0f7fa;
+  --accent:#26c6da; --accent-light:#b2ebf2;
+  --text:#1a1a1a; --text-2:#607d8b; --text-3:#90a4ae;
+  --border:#eef5f3; --border-2:#e0e8e5;
+  --up:#0288d1; --down:#f57c00;
+  --good:#43a047; --warn:#fb8c00; --danger:#e53935;
+  --shadow:0 2px 16px rgba(0,131,143,.07);
+  --r:16px; --r-sm:10px;
+}
+
+body{
+  font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--bg); color:var(--text);
+  min-height:100vh; padding:12px;
+  display:flex; justify-content:center;
+  -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:none;
+}
+
+.wrap{max-width:480px; width:100%; padding-bottom:24px}
+
+/* === Header === */
+.header{
+  position:relative; overflow:hidden;
+  background:linear-gradient(135deg,#4fc3f7 0%,#26c6da 45%,#00897b 100%);
+  border-radius:var(--r); padding:28px 22px 38px; margin-bottom:16px;
+  box-shadow:0 8px 32px rgba(38,198,218,.22);
+}
+.header::before{content:'';position:absolute;top:-40%;right:-12%;width:180px;height:180px;background:rgba(255,255,255,.1);border-radius:50%}
+.header::after{content:'';position:absolute;bottom:-35%;left:-8%;width:140px;height:140px;background:rgba(255,255,255,.06);border-radius:50%}
+.header h1{font-size:1.5rem;font-weight:700;color:#fff;letter-spacing:.5px;position:relative;z-index:1}
+.header .sub{font-size:.85rem;color:rgba(255,255,255,.85);margin-top:6px;position:relative;z-index:1}
+.header .status{display:inline-flex;align-items:center;gap:5px;margin-top:12px;padding:4px 12px;background:rgba(255,255,255,.18);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:20px;font-size:.75rem;color:#fff;position:relative;z-index:1}
+.header .status .dot{width:6px;height:6px;border-radius:50%;background:#69f0ae;animation:pulse 2s infinite}
+.header .wave{position:absolute;bottom:0;left:0;width:100%;height:20px;z-index:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* === Cards === */
+.card{
+  background:var(--card); border-radius:var(--r);
+  padding:18px 20px; margin-bottom:12px;
+  box-shadow:var(--shadow); border:1px solid var(--border);
+  animation:fadeUp .5s ease-out backwards;
+}
+.card:nth-child(2){animation-delay:.06s}
+.card:nth-child(3){animation-delay:.12s}
+.card:nth-child(4){animation-delay:.18s}
+.card:nth-child(5){animation-delay:.24s}
+.card:nth-child(6){animation-delay:.30s}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+.card-head{
+  display:flex;align-items:center;gap:8px;
+  font-size:1.05rem;font-weight:600;color:var(--primary);
+  margin-bottom:14px;padding-bottom:10px;
+  border-bottom:2px solid var(--primary-light);
+}
+.card-head .icon{font-size:1.15rem;display:inline-flex;align-items:center}
+.card-head .icon svg{display:block}
+
+/* === Data Rows === */
+.drow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed var(--border-2)}
+.drow:last-child{border-bottom:none}
+.dlabel{font-size:.9rem;color:var(--text-2);font-weight:400}
+.dvalue{font-size:1.1rem;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.dvalue .unit{font-size:.78rem;font-weight:400;color:var(--text-3);margin-left:3px}
+.arrow{display:inline-flex;align-items:center;gap:1px;margin-left:8px;padding:2px 8px;border-radius:8px;font-size:.76rem;font-weight:600}
+.arrow-up{background:#e3f2fd;color:var(--up)}
+.arrow-down{background:#fff3e0;color:var(--down)}
+
+/* === Sparkline === */
+.spark-wrap{margin:2px 0 14px;padding:14px 6px 6px;background:linear-gradient(180deg,#f0f9ff,rgba(240,249,255,0));border-radius:var(--r-sm)}
+.spark-wrap svg{width:100%;height:56px;display:block}
+.spark-labels{display:flex;justify-content:space-between;font-size:.72rem;color:var(--text-3);margin-top:6px;padding:0 4px}
+.spark-labels span{font-variant-numeric:tabular-nums}
+
+/* === Trend List === */
+.titem{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:.9rem;border-bottom:1px dashed var(--border)}
+.titem:last-child{border-bottom:none}
+.tdate{color:var(--text-3);min-width:48px;font-variant-numeric:tabular-nums}
+.tlevel{font-weight:600;color:var(--text);min-width:78px;font-variant-numeric:tabular-nums}
+.tchange{font-size:.85rem;font-variant-numeric:tabular-nums;margin-left:auto;min-width:40px;text-align:right}
+.tchange.up{color:var(--up)}
+.tchange.down{color:var(--down)}
+.tchange.flat{color:var(--text-3)}
+.tbadge{background:var(--primary-light);color:var(--primary);border-radius:6px;padding:2px 8px;font-size:.68rem;font-weight:600}
+
+/* === Fish === */
+.fish-text{font-size:.95rem;line-height:1.7;color:var(--text-2)}
+.fish-rating{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:24px;font-size:.88rem;font-weight:600;margin-top:12px}
+.fr-good{background:#e8f5e9;color:#2e7d32}
+.fr-ok{background:#fff8e1;color:#f57f17}
+.fr-bad{background:#ffebee;color:#c62828}
+.fr-ban{background:#ffebee;color:#c62828}
+
+/* === Alert === */
+.alert-text{font-size:.95rem;line-height:1.7;color:var(--text-2)}
+
+/* === Special === */
+.card-special{border-color:#ffcdd2;background:linear-gradient(135deg,#fff,#fff5f5)}
+.card-special .card-head{color:var(--danger);border-bottom-color:#ffcdd2}
+.special-text{font-size:.95rem;line-height:1.7;color:var(--danger);font-weight:500}
+
+/* === Footer === */
+.footer{text-align:center;padding:16px 0 8px;font-size:.75rem;color:var(--text-3)}
+.update-time{display:inline-flex;align-items:center;gap:4px;padding:5px 14px;background:var(--card);border-radius:20px;margin-bottom:8px;border:1px solid var(--border);font-size:.75rem;color:var(--text-2)}
+
+/* === Empty === */
+.empty{text-align:center;padding:60px 20px;color:var(--text-3)}
+.empty .eicon{font-size:3rem;margin-bottom:12px}
+.empty .etext{font-size:1rem;margin-bottom:4px;color:var(--text-2)}
+.empty .ehint{font-size:.8rem}
+
+@media(max-width:360px){
+  .header h1{font-size:1.3rem}
+  .card{padding:14px 16px}
+  .dvalue{font-size:1rem}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+/* === Utils === */
+function param(k){return new URLSearchParams(location.search).get(k)}
+function esc(s){return s?s.replace(/</g,'&lt;').replace(/>/g,'&gt;'):''}
+
+/* === Bar Chart Icon SVG === */
+var BAR_ICON='<svg width="20" height="20" viewBox="0 0 24 24"><rect x="3" y="14" width="4" height="7" rx="1" fill="#4caf50"/><rect x="10" y="9" width="4" height="12" rx="1" fill="#f44336"/><rect x="17" y="5" width="4" height="16" rx="1" fill="#2196f3"/></svg>';
+
+/* === Demo Data === */
+var DEMO={
+  title:'7月26日小浪底水情简报',
+  date:'2026-07-26 08:00',
+  message:[
+    '【小浪底水情简报】7月26日',
+    '━━━━━━━━━━━━━',
+    '▸ 库水位：228.10m ↑0.00m',
+    '▸ 入库：600m³/s | 出库：635m³/s',
+    '▸ 蓄水量：6.6亿m³',
+    '▸ 坝下水位：133.30m',
+    '',
+    '📈 近7天水位趋势',
+    '07-20 228.05m ↑0.02',
+    '07-21 228.08m ↑0.03',
+    '07-22 228.10m ↑0.02',
+    '07-23 228.12m ↑0.02',
+    '07-24 228.10m ↓0.02',
+    '07-25 228.10m ↑0.00',
+    '07-26 228.10m ↑0.00 ←今日',
+    '',
+    '🐟 鱼情分析',
+    '入库略小于出库，水位平稳，水流稳定，鱼情一般，可钓。',
+    '',
+    '🎣 垂钓提醒',
+    '建议在坝下300m外区域作钓，注意水流变化，做好安全防护。'
+  ].join('\n')
+};
+
+/* === Parser === */
+var EMOJIS=['📊','📈','🐟','🎣','⚠️'];
+
+function startsWithEmoji(line){
+  for(var i=0;i<EMOJIS.length;i++){
+    if(line.indexOf(EMOJIS[i])===0)return EMOJIS[i];
+  }
+  return null;
+}
+
+function isSeparator(line){
+  return /^[━─=]{3,}/.test(line) || /^[-_=]{3,}/.test(line);
+}
+
+function isWaterDataLine(line){
+  return line.indexOf('库水位')>=0 || line.indexOf('入库')>=0 || 
+         line.indexOf('出库')>=0 || line.indexOf('蓄水量')>=0 || 
+         line.indexOf('坝下')>=0;
+}
+
+function getIconForType(type){
+  if(type==='water')return BAR_ICON;
+  if(type==='trend')return '📈';
+  if(type==='fish')return '🐟';
+  if(type==='alert')return '🎣';
+  if(type==='special')return '⚠️';
+  return '📢';
+}
+
+function parseContent(msg){
+  if(!msg)return[];
+  var rawLines=msg.split('\n');
+  var sections=[]; var current=null;
+
+  for(var i=0;i<rawLines.length;i++){
+    var raw=rawLines[i].trim();
+    if(raw==='')continue;
+    if(isSeparator(raw))continue;
+    
+    /* Strip ▸ prefix */
+    var line=raw.replace(/^▸\s*/,'').trim();
+    
+    /* Check for 【title】 bracket format */
+    var bracketMatch=line.match(/^【(.+?)】\s*(.*)/);
+    if(bracketMatch){
+      if(current)sections.push(current);
+      var bTitle=bracketMatch[1].trim();
+      var bRest=bracketMatch[2].trim();
+      current={type:detectType(bTitle,''),icon:getIconForType(detectType(bTitle,'')),title:bTitle,items:[]};
+      if(bRest && !isSeparator(bRest))current.items.push(bRest);
+      continue;
+    }
+    
+    /* Check for emoji prefix */
+    var emoji=startsWithEmoji(line);
+    if(emoji){
+      if(current)sections.push(current);
+      var rest=line.substring(emoji.length).trim();
+      
+      /* Double 🎣 = special alert */
+      if(emoji==='🎣'&&line.indexOf('🎣🎣')===0){
+        current={type:'special',icon:'⚠️',title:'特别提醒',items:[]};
+        var rest3=line.replace(/🎣+/g,'').trim();
+        if(rest3)current.items.push(rest3);
+      }else{
+        var dt=detectType(rest,emoji);
+        current={type:dt,icon:getIconForType(dt),title:rest,items:[]};
+      }
+    }else if(current){
+      current.items.push(line);
+    }else{
+      /* No header yet - auto-detect water data */
+      if(isWaterDataLine(line)){
+        current={type:'water',icon:BAR_ICON,title:'今日水情',items:[line]};
+      }else{
+        current={type:'default',icon:'📢',title:'',items:[line]};
+      }
+    }
+  }
+  if(current)sections.push(current);
+  return sections;
+}
+
+function detectType(title,emoji){
+  if(emoji==='⚠️')return'special';
+  if(title.indexOf('水情')>=0)return'water';
+  if(title.indexOf('7')>=0||title.indexOf('趋势')>=0||title.indexOf('近')>=0)return'trend';
+  if(title.indexOf('鱼情')>=0||title.indexOf('钓')>=0&&title.indexOf('提醒')<0)return'fish';
+  if(title.indexOf('垂钓')>=0||title.indexOf('提醒')>=0)return'alert';
+  return'default';
+}
+
+/* === Renderers === */
+
+function renderWaterData(items){
+  var dataRows=[];
+  var inF=null,outF=null,flowRendered=false;
+  
+  /* First pass: collect inflow/outflow from separate lines */
+  for(var i=0;i<items.length;i++){
+    var line=items[i];
+    
+    /* Same line: 入库...出库... */
+    if(line.indexOf('入库')>=0 && line.indexOf('出库')>=0){
+      var m=line.match(/入库[流量：:\s]*(\d+).*?出库[流量：:\s]*(\d+)/);
+      if(m){
+        inF=parseInt(m[1]); outF=parseInt(m[2]);
+        flowRendered=true;
+      }
+    }
+    /* Separate inflow line */
+    else if(line.indexOf('入库')>=0 && line.indexOf('出库')<0){
+      var m2=line.match(/(\d+)/);
+      if(m2 && inF===null)inF=parseInt(m2[1]);
+    }
+    /* Separate outflow line */
+    else if(line.indexOf('出库')>=0 && line.indexOf('入库')<0){
+      var m3=line.match(/(\d+)/);
+      if(m3 && outF===null)outF=parseInt(m3[1]);
+    }
+  }
+  
+  /* Second pass: build rows in order */
+  for(var i=0;i<items.length;i++){
+    var line=items[i];
+    
+    if(line.indexOf('库水位')>=0){
+      var lv=line.match(/([\d.]+)\s*m/);
+      var chg=line.match(/[↑↓]([\d.]+)/);
+      var isUp=line.indexOf('↑')>=0;
+      dataRows.push({
+        label:'库水位',
+        value:lv?lv[1]:'-',
+        unit:'m',
+        change:chg?(isUp?'↑':'↓')+chg[1]+'m':null,
+        isUp:isUp
+      });
+    }
+    else if(line.indexOf('入库')>=0 && line.indexOf('出库')>=0){
+      /* Already collected, render combined row */
+      if(inF!==null && outF!==null){
+        dataRows.push({label:'入库 / 出库', value:inF+' / '+outF, unit:'m³/s'});
+      }
+    }
+    else if((line.indexOf('入库')>=0 && line.indexOf('出库')<0) || 
+            (line.indexOf('出库')>=0 && line.indexOf('入库')<0)){
+      /* Skip separate lines - will render combined below */
+    }
+    else if(line.indexOf('蓄水量')>=0){
+      var st=line.match(/([\d.]+)\s*亿/);
+      dataRows.push({label:'蓄水量', value:st?st[1]:'-', unit:'亿m³'});
+    }
+    else if(line.indexOf('坝下')>=0){
+      var ds=line.match(/([\d.]+)\s*m/);
+      dataRows.push({label:'坝下水位', value:ds?ds[1]:'-', unit:'m'});
+    }
+  }
+  
+  /* If inflow/outflow collected from separate lines, insert after 库水位 */
+  if(!flowRendered && inF!==null && outF!==null){
+    var insertIdx=1;
+    for(var i=0;i<dataRows.length;i++){
+      if(dataRows[i].label==='库水位'){insertIdx=i+1;break;}
+    }
+    dataRows.splice(insertIdx,0,{label:'入库 / 出库', value:inF+' / '+outF, unit:'m³/s'});
+  }
+  
+  /* Render */
+  var html='';
+  for(var i=0;i<dataRows.length;i++){
+    var r=dataRows[i];
+    html+='<div class="drow"><span class="dlabel">'+r.label+'</span><span class="dvalue">'+r.value+'<span class="unit">'+r.unit+'</span></span>';
+    if(r.change){
+      html+='<span class="arrow '+(r.isUp?'arrow-up':'arrow-down')+'">'+r.change+'</span>';
+    }
+    html+='</div>';
+  }
+  
+  return html;
+}
+
+function renderSparkline(items){
+  var levels=[];
+  for(var i=0;i<items.length;i++){
+    var m=items[i].match(/([\d.]+)m/);
+    if(m)levels.push(parseFloat(m[1]));
+  }
+  if(levels.length<2)return'';
+
+  var min=Math.min.apply(null,levels);
+  var max=Math.max.apply(null,levels);
+  var range=max-min||1;
+  var w=100,h=40,pad=5;
+
+  var pts=levels.map(function(lv,i){
+    var x=pad+(i/(levels.length-1))*(w-pad*2);
+    var y=pad+(1-(lv-min)/range)*(h-pad*2);
+    return{x:x,y:y};
+  });
+
+  var lp=pts.map(function(p,i){return(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1)}).join(' ');
+  var ap=lp+' L'+pts[pts.length-1].x.toFixed(1)+','+(h-pad)+' L'+pts[0].x.toFixed(1)+','+(h-pad)+' Z';
+  var gid='sg'+Math.random().toString(36).substr(2,6);
+
+  var svg='<div class="spark-wrap">';
+  svg+='<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none">';
+  svg+='<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">';
+  svg+='<stop offset="0%" stop-color="#26c6da" stop-opacity="0.28"/>';
+  svg+='<stop offset="100%" stop-color="#26c6da" stop-opacity="0"/>';
+  svg+='</linearGradient></defs>';
+  svg+='<path d="'+ap+'" fill="url(#'+gid+')"/>';
+  svg+='<path d="'+lp+'" fill="none" stroke="#26c6da" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  pts.forEach(function(p,i){
+    if(i===pts.length-1){
+      svg+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3.5" fill="#fff" stroke="#00838f" stroke-width="2"/>';
+    }else{
+      svg+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="1.5" fill="#26c6da"/>';
+    }
+  });
+  svg+='</svg>';
+  svg+='<div class="spark-labels"><span>最低 '+min.toFixed(2)+'m</span><span>最高 '+max.toFixed(2)+'m</span></div>';
+  svg+='</div>';
+  return svg;
+}
+
+function renderTrend(items){
+  var html=renderSparkline(items);
+
+  for(var i=0;i<items.length;i++){
+    var line=items[i].trim();
+    var m=line.match(/(\d{2}-\d{2})\s+([\d.]+)m/);
+    if(m){
+      var date=m[1],level=m[2];
+      var chg=line.match(/[↑↓]([\d.]+)/);
+      var isToday=line.indexOf('今日')>=0;
+      var ch='';
+
+      if(chg){
+        var isUp=line.indexOf('↑')>=0;
+        ch='<span class="tchange '+(isUp?'up':'down')+'">'+(isUp?'↑':'↓')+chg[1]+'</span>';
+      }else{
+        ch='<span class="tchange flat">—</span>';
+      }
+
+      html+='<div class="titem">';
+      html+='<span class="tdate">'+date+'</span>';
+      html+='<span class="tlevel">'+level+'m</span>';
+      html+=ch;
+      if(isToday)html+='<span class="tbadge">今日</span>';
+      html+='</div>';
+    }
+  }
+  return html;
+}
+
+function renderFish(items){
+  var text=items.join(' ');
+  var rating='一般',cls='fr-ok',emoji='😐';
+
+  if(text.indexOf('禁钓')>=0||text.indexOf('危险')>=0){rating='禁钓';cls='fr-ban';emoji='🚫'}
+  else if(text.indexOf('好钓')>=0){rating='好钓';cls='fr-good';emoji='🎣'}
+  else if(text.indexOf('难钓')>=0){rating='难钓';cls='fr-bad';emoji='😕'}
+  else if(text.indexOf('可钓')>=0){rating='可钓';cls='fr-ok';emoji='👍'}
+
+  return '<div class="fish-text">'+esc(text)+'</div><div class="fish-rating '+cls+'">'+emoji+' '+rating+'</div>';
+}
+
+function renderAlert(items){
+  return '<div class="alert-text">'+esc(items.join(' '))+'</div>';
+}
+
+function renderSpecial(items){
+  return '<div class="special-text">'+esc(items.join(' '))+'</div>';
+}
+
+/* === Main === */
+function render(){
+  var title=param('title')||DEMO.title;
+  var msg=param('message')||param('content')||DEMO.message;
+  var date=param('date')||DEMO.date;
+
+  var sections=parseContent(msg);
+  var html='';
+
+  var dm=title.match(/(\d+)月(\d+)日/);
+  var dateStr=dm?dm[1]+'月'+dm[2]+'日':'';
+
+  /* Header */
+  html+='<div class="header">';
+  html+='<h1>🌊 小浪底水情简报</h1>';
+  if(dateStr)html+='<div class="sub">'+dateStr+' · 小浪底水利枢纽</div>';
+  html+='<div class="status"><span class="dot"></span>实时监测</div>';
+  html+='<svg class="wave" viewBox="0 0 480 20" preserveAspectRatio="none"><path d="M0,10 Q120,0 240,10 T480,10 L480,20 L0,20 Z" fill="rgba(255,255,255,0.12)"/></svg>';
+  html+='</div>';
+
+  if(sections.length===0){
+    html+='<div class="empty"><div class="eicon">📊</div><div class="etext">暂无水情数据</div><div class="ehint">请通过链接传入水情数据</div></div>';
+  }else{
+    for(var i=0;i<sections.length;i++){
+      var s=sections[i];
+      var cc=s.type==='special'?'card card-special':'card';
+      html+='<div class="'+cc+'">';
+      
+      /* Card head */
+      if(s.title){
+        html+='<div class="card-head"><span class="icon">'+(s.icon||'📢')+'</span>'+esc(s.title)+'</div>';
+      }
+      
+      switch(s.type){
+        case'water':html+=renderWaterData(s.items);break;
+        case'trend':html+=renderTrend(s.items);break;
+        case'fish':html+=renderFish(s.items);break;
+        case'alert':html+=renderAlert(s.items);break;
+        case'special':html+=renderSpecial(s.items);break;
+        default:html+='<div class="alert-text">'+esc(s.items.join('\n'))+'</div>';
+      }
+      html+='</div>';
+    }
+  }
+
+  /* Footer */
+  html+='<div class="footer">';
+  if(date)html+='<div class="update-time">🕐 '+esc(date)+'</div>';
+  html+='<div>小浪底水利枢纽 · 水情自动监测</div>';
+  html+='</div>';
+
+  document.getElementById('app').innerHTML=html;
+}
+
+render();
+</script>
+</body>
+</html>
